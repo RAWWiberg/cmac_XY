@@ -1,0 +1,346 @@
+---
+title: "SATC Analysis"
+author: "R. Axel W. Wiberg"
+date: "31.01.2022" # Last updated
+output: html_notebook
+editor_options: 
+  chunk_output_type: console
+---
+
+Source the SATC functions
+```{r}
+source(here::here("scripts/SATC/","satcFunc.R"))
+library(reshape)
+library(ggplot2)
+```
+
+
+Load indxstats files
+```{r}
+files<-list.files(here::here("SATC/filt_readsreps"),pattern = ".idxstats")
+idx<-lapply(paste(here::here(),"/SATC/filt_readsreps/",files,sep=""), read.table,as.is=TRUE)
+names(idx)<-gsub(".idxstats","",files)
+names(idx)<-gsub("_filtrepsreads","",names(idx))
+
+cov_mat<-sapply(idx,function(x) x$V3)
+rownames(cov_mat)<-idx$CmacF1$V1
+
+covlen_mat<-sapply(idx,function(x) x$V3/x$V2)
+rownames(covlen_mat)<-idx$CmacF1$V1
+covlen_mat_df<-as.data.frame(covlen_mat)
+covlen_mat_df$scaf<-row.names(covlen_mat)
+covlen_mat_df$len<-idx$CmacF1$V2
+covlen_mat_df_m<-melt(covlen_mat_df,id.vars = c("scaf","len"))
+colnames(covlen_mat_df_m)<-c("scaf","len","sample","covlen")
+
+ggplot()+
+  geom_point(data=covlen_mat_df_m,aes(x=log(len),y=covlen,fill=sample),shape=21,alpha=1/3)+
+  scale_fill_manual("Sample",values=c("pink","red","lightblue","blue"))+
+  xlab("log(length)")+
+  ylab("Nreads/Length")#+
+```
+
+
+List of Philipp's candidate Y scaffolds
+```{r}
+philY<-c("utg000322l_1","utg000312c_1","utg000610l_1", "utg000584l_1", "utg001235l_1")
+philX<-c("utg000057l_1", "utg000359l_1","utg000114l_1", "utg000326l_1", "utg000139l_1",
+         "utg000191l_1", "utg000532l_1")
+```
+
+
+Filter data and compute normalised coverage
+```{r}
+## Filter scafoolds (min 100kb ) and normalize using the M longest scaffold 
+rFilt <- filterScaffold(dat=idx,minLength=1e5,M=5,range=c(0,2))
+```
+
+
+Plot coverage
+```{r}
+covlen_mat<-sapply(rFilt,function(x) x$Nreads/x$Length)
+rownames(covlen_mat)<-rFilt$CmacF1$scaffold
+covlen_mat_df<-as.data.frame(covlen_mat)
+covlen_mat_df$scaf<-row.names(covlen_mat)
+covlen_mat_df$len<-rFilt$CmacF1$Length
+covlen_mat_df$normscaf<-rFilt$CmacF1$normScafs
+covlen_mat_df_m<-melt(covlen_mat_df,id.vars = c("scaf","len","normscaf"))
+colnames(covlen_mat_df_m)<-c("scaf","len","normscaf","sample","covlen")
+
+ggplot()+
+  geom_point(data=covlen_mat_df_m,aes(x=log(len),y=covlen,fill=sample),shape=21,alpha=1/3)+
+  scale_fill_manual("Sample",values=c("pink","red","lightblue","blue"))+
+  geom_point(data=covlen_mat_df_m[covlen_mat_df_m$normscaf,],
+             aes(x=log(len),y=covlen,group=sample),shape=21,size=5,colour="black")+
+  xlab("log(length)")+
+  ylab("Nreads/Length")
+
+cov_mat <- sapply(rFilt,function(x) x$norm)
+cov_mat_df<-as.data.frame(cov_mat)
+cov_mat_df$scaf<-rFilt$CmacF1$scaffold
+cov_mat_df$len<-rFilt$CmacF1$Length
+cov_mat_df$normscaf<-rFilt$CmacF1$normScafs
+cov_mat_df_m<-melt(cov_mat_df,id.vars = c("scaf","len","normscaf"))
+colnames(cov_mat_df_m)<-c("scaf","len","normscaf","sample","normcov")
+head(cov_mat_df_m)
+
+cov_mat_df_m[cov_mat_df_m$normscaf,]
+ggplot()+
+  geom_point(data=cov_mat_df_m,aes(x=log(len),y=normcov,fill=sample),shape=21,alpha=1/3,size=2)+
+  scale_fill_manual("Sample",values=c("pink","red","lightblue","blue"))+
+  geom_point(data=cov_mat_df_m[cov_mat_df_m$normscaf,],
+             aes(x=log(len),y=normcov,group=sample),shape=21,size=5,colour="black")+
+  xlab("log(length)")+
+  ylab("Normalised coverage")
+
+```
+
+
+The first scaffold is longest and has much higher coverage than the others. Try normalising with just the next four.
+Try not using: "utg000012l_1", "utg000020l_1"
+```{r}
+normScafs<-c("utg000123l_1","utg000010l_1","utg000072l_1")
+## Filter scafoolds (min 100kb ) and normalize using the M longest scaffold 
+rFilt <- filterScaffold(dat=idx,minLength=1e5,normScaffolds = normScafs,range=c(0,2))
+```
+
+Plot coverage
+```{r}
+covlen_mat <- sapply(rFilt,function(x) x$Nreads/1000000)
+rownames(covlen_mat)<-rFilt$CmacF1$scaffold
+
+covlen_mat_df<-as.data.frame(covlen_mat)
+covlen_mat_df$scaf<-row.names(covlen_mat)
+covlen_mat_df$len<-rFilt$CmacF1$Length
+covlen_mat_df$normscaf<-rFilt$CmacF1$normScafs
+covlen_mat_df_m<-melt(covlen_mat_df,id.vars = c("scaf","len","normscaf"))
+colnames(covlen_mat_df_m)<-c("scaf","len","normscaf","sample","covlen")
+
+covlen_mat_df_m[covlen_mat_df_m$normscaf,]
+
+ggplot()+
+  geom_point(data=covlen_mat_df_m,aes(x=log(len),y=covlen,fill=sample),shape=21,alpha=1/3)+
+  scale_fill_manual("Sample",values=c("pink","red","lightblue","blue"))+
+  geom_point(data=covlen_mat_df_m[covlen_mat_df_m$normscaf,],
+             aes(x=log(len),y=covlen,group=sample),shape=21,size=5,colour="black")+
+  xlab("log(length)")+
+  ylab("Nreads (x 1,000,000)")#+
+
+cov_mat <- sapply(rFilt,function(x) x$norm)
+cov_mat_df<-as.data.frame(cov_mat)
+cov_mat_df$scaf<-rFilt$CmacF1$scaffold
+cov_mat_df$len<-rFilt$CmacF1$Length
+cov_mat_df$normscaf<-rFilt$CmacF1$normScafs
+cov_mat_df_m<-melt(cov_mat_df,id.vars = c("scaf","len","normscaf"))
+colnames(cov_mat_df_m)<-c("scaf","len","normscaf","sample","normcov")
+
+cov_mat_df_m[cov_mat_df_m$normscaf,]
+ggplot()+
+  geom_point(data=cov_mat_df_m,aes(x=log(len),y=normcov,fill=sample),shape=21,alpha=1/3,size=2)+
+  scale_fill_manual("Sample",values=c("pink","red","lightblue","blue"))+
+  geom_point(data=cov_mat_df_m[cov_mat_df_m$normscaf,],
+             aes(x=log(len),y=normcov,group=sample),shape=21,size=5,colour="black")+
+  xlab("log(length)")+
+  ylab("Normalised coverage")#+
+```
+
+
+```{r}
+##plot normalized depth
+plotDepth(rFilt) ##all scaffs
+plotDepth(rFilt,normOnly=TRUE) ##scaffolds used for normalization (look for outliers)
+
+## identify sex and sex scaffolds
+sex <- sexDetermine(dat=rFilt, K=2, model="gaussian")
+str(sex)
+## See the inferred sex of each indiviual
+head(cbind(names(idx),sex$sex))
+
+## plot the clustering
+mat <- sapply(sex$dat,function(y) y$norm)
+sex_pca_dat<-as.data.frame(sex$pca$x)
+sex_pca_dat$sample<-colnames(mat)
+sex_pca_dat$sex<-sex$sex
+head(sex_pca_dat)
+
+ggplot()+
+  geom_point(data=sex_pca_dat,aes(x=V1,y=V2,fill=sex),shape=21,size=3)+
+  geom_label(data=sex_pca_dat,aes(x=V1,y=V2,label=sample),vjust=1.5)+
+  scale_x_continuous("PC1",limits=c(-2,2))+
+  scale_y_continuous("PC2",limits=c(-0.6,0.6))+
+  scale_fill_discrete("Inferred sex",labels=c("heteromorphic\n(XY)","homomorphic\n(XX)"))+
+  theme(axis.text=element_text(size=16),
+        axis.title=element_text(size=16))
+
+plotGroup(sex)
+
+## See the inferred status of each scaffold
+head(sex$SexScaffolds)
+sex$SexScaffolds[match(c(philY), sex$SexScaffolds$Name),]
+sex$SexScaffolds[match(c(philX), sex$SexScaffolds$Name),]
+
+sig_scafs<-sex$SexScaffolds[which(sex$SexScaffolds$Pval<0.05),]
+
+
+length(which(sex$SexScaffolds$Name[which(sex$SexScaffolds$Pval<0.05)] %in% c(philX,philY)))
+nrow(sex$SexScaffolds[which(sex$SexScaffolds$Pval<0.05),])
+table(sex$SexScaffolds$betaval[which(sex$SexScaffolds$Pval<0.05)] > 0)
+```
+
+Plot the data for Phil's contigs
+```{r}
+mat <- sapply(sex$dat,function(y) y$norm)
+rownames(mat) <- as.character(sex$dat[[1]][,1])
+
+phil_scafs<-mat[c(philX,philY),]
+phil_scafs<-t(phil_scafs)
+phil_scafs<-as.data.frame(phil_scafs)
+phil_scafs$samp<-row.names(phil_scafs)
+phil_scafs$sex<-sex$sex
+
+phil_scafs_m<-melt(phil_scafs,id.vars = c("samp","sex"))
+colnames(phil_scafs_m)<-c("samp","sex","contig","norm")
+ggplot()+
+  geom_point(data=phil_scafs_m,aes(x=contig,y=norm,fill=sex,group=sex),
+             shape=21,size=3,position=position_dodge(0.2),alpha=1/2)+
+  ylab("Normalised Coverage")+
+  xlab("")+
+  theme(axis.text.x = element_text(angle=45,vjust=1,hjust=1))
+```
+
+Plot all scafs with significantly different coverage 
++ scafs that are labelled by Phil
+```{r}
+mat <- sapply(sex$dat,function(y) y$norm)
+rownames(mat) <- as.character(sex$dat[[1]][,1])
+
+sig_diff_scafs<-sex$SexScaffolds$Name[which(sex$SexScaffolds$Pval<0.05)]
+sig_dif_scafs$type<-rep("Unnkown",nrow(sig_dif_scafs))
+sig_dif_scafs$type[match(c(philX), sig_dif_scafs$Name)]<-"X"
+sig_dif_scafs$type[match(c(philY), sig_dif_scafs$Name)]<-"Y"
+
+sig_dif_scafs_dat<-mat[unique(c(philX,philY,sig_diff_scafs)),]
+sig_dif_scafs_dat<-t(sig_dif_scafs_dat)
+sig_dif_scafs_dat<-as.data.frame(sig_dif_scafs_dat)
+sig_dif_scafs_dat$samp<-row.names(sig_dif_scafs_dat)
+sig_dif_scafs_dat$sex<-sex$sex
+sig_dif_scafs_dat<-melt(sig_dif_scafs_dat,id.vars = c("samp","sex"))
+colnames(sig_dif_scafs_dat)<-c("samp","sex","contig","norm")
+
+ggplot()+
+  geom_point(data=sig_dif_scafs_dat,
+             aes(x=contig,y=norm,fill=sex,group=sex),
+             shape=21,size=3,position=position_dodge(0.2),alpha=1/2)+
+  ylab("Normalised Coverage")+
+  xlab("")+
+  scale_fill_discrete("Inferred sex",labels=c("heteromorphic\n(XY)","homomorphic\n(XX)"))+
+  theme(axis.text.x = element_text(angle=45,vjust=1,hjust=1))
+
+# Only plot scaffolds with abs(beta) > 0.1
+beta0.1<-sex$SexScaffolds$Name[which(abs(sex$SexScaffolds$betaval)>0.1)]
+
+# If beta is negative, then homomorphic coverage is lower than heteromorphic
+putativeY<-sex$SexScaffolds$Name[which(sex$SexScaffolds$betaval<0)]
+putativeY<-putativeY[which(putativeY%in%as.character(sig_dif_scafs_dat$contig))]
+# If beta is negative, then homomorphic coverage is lower than heteromorphic
+putativeX<-sex$SexScaffolds$Name[which(sex$SexScaffolds$betaval>0)]
+putativeX<-putativeX[which(putativeX%in%as.character(sig_dif_scafs_dat$contig))]
+sig_dif_scafs_dat$contig<-factor(sig_dif_scafs_dat$contig,levels=c(putativeX,putativeY))
+
+sig_dif_scafs_dat$type<-rep("Unknown",nrow(sig_dif_scafs_dat))
+sig_dif_scafs_dat$type[which(sig_dif_scafs_dat$contig %in% c(philX))]<-"(Phil)Putative X"
+sig_dif_scafs_dat$type[which(sig_dif_scafs_dat$contig %in% c(philY))]<-"(Phil)Putative Y"
+sig_dif_scafs_dat
+
+#[sig_dif_scafs_dat$contig %in% beta0.1,]
+
+ggplot()+
+  geom_point(data=sig_dif_scafs_dat,
+             aes(x=contig,y=norm,fill=sex,group=sex,size=type),
+             shape=21,position=position_dodge(0.2),alpha=1/2)+
+  ylab("Normalised Coverage")+
+  xlab("")+
+  scale_fill_discrete("Inferred sex",labels=c("heteromorphic\n(XY)","homomorphic\n(XX)"))+
+  scale_size_manual("",values=c(5,5,2),guide=FALSE)+
+  theme(axis.text.x = element_text(angle=45,vjust=1,hjust=1),
+        axis.text=element_text(size=16),
+        axis.title=element_text(size=16),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16))
+
+
+sex$SexScaffolds$linkage<-ifelse(sex$SexScaffolds$betaval>0,"X","Y")
+sex$SexScaffolds$other_ev<-rep("0",nrow(sex$SexScaffolds))
+sex$SexScaffolds$other_ev[which(sex$SexScaffolds$Name %in% c(philX))]<-"1"
+sex$SexScaffolds$other_ev[which(sex$SexScaffolds$Name %in% c(philY))]<-"1"
+
+sex$SexScaffolds[which(sex$SexScaffolds$Name %in% unique(c(philX,philY,sig_diff_scafs))),]
+nrow(sex$SexScaffolds[which(sex$SexScaffolds$Name %in% unique(c(philX,philY,sig_diff_scafs))),])
+```
+
+
+```{r}
+# What is coverage at the contigs used for normalising
+cov_mat[rFilt$CmacF1$scaffold[which(rFilt$CmacF1$normScafs)],]
+# What is coverage at phil candidate Y
+cov_mat[philY]
+# What is coverage at scaffolds with significantly different coverage
+cov_mat[c(putativeX,putativeY),]
+```
+
+
+```{r}
+mat_first_df<-as.data.frame(mat_first)
+mat_first_df$scaf<-row.names(mat_first)
+mat_first_df$len<-rFilt$CmacF1$Length
+mat_first_df$normscaf<-rFilt$CmacF1$normScafs
+mat_first_df_m<-melt(mat_first_df,id.vars = c("scaf","len","normscaf"))
+colnames(mat_first_df_m)<-c("scaf","len","normscaf","sample","normcov")
+head(mat_first_df_m)
+
+mat_first_df_m[mat_first_df_m$normscaf,]
+ggplot()+
+  geom_point(data=mat_first_df_m,aes(x=log(len),y=normcov,fill=sample),shape=21,alpha=1/3,size=2)+
+  scale_fill_manual("Sample",values=c("pink","red","lightblue","blue"))+
+  geom_point(data=mat_first_df_m[mat_first_df_m$normscaf,],
+             aes(x=log(len),y=normcov,group=sample),shape=21,size=5,colour="black")+
+  geom_point(data=mat_first_df_m[which(mat_first_df_m$scaf%in%c(putativeX,putativeY)),],
+             aes(x=log(len),y=normcov),shape=21,size=5,colour="red")+
+  xlab("log(length)")+
+  ylab("Normalised coverage")#+
+
+```
+
+
+Plot 20 random scaffolds not in Phil's list or with different coverage
+```{r}
+names(sex$dat)
+
+mat <- sapply(sex$dat,function(y) y$norm)
+rownames(mat) <- as.character(sex$dat[[1]][,1])
+head(mat)
+head(t(mat))
+
+todrop<-unique(c(philY,philX,sig_diff_scafs))
+remaining_scafs<-sex$SexScaffolds$Name[which(!(sex$SexScaffolds$Name %in% todrop))]
+random_scafs<-sample(remaining_scafs,size = 30,replace = FALSE)
+random_scafs_dat<-mat[random_scafs,]
+random_scafs_dat<-t(random_scafs_dat)
+random_scafs_dat<-as.data.frame(random_scafs_dat)
+random_scafs_dat$samp<-row.names(random_scafs_dat)
+random_scafs_dat$sex<-sex$sex
+
+random_scafs_dat_m<-melt(random_scafs_dat,id.vars = c("samp","sex"))
+colnames(random_scafs_dat_m)<-c("samp","sex","contig","norm")
+
+sex$SexScaffolds[which(sex$SexScaffolds$Name %in% remaining_scafs),]
+head(random_scafs_dat_m)
+
+ggplot()+
+  geom_point(data=random_scafs_dat_m,aes(x=contig,y=norm,fill=sex,group=sex),
+             shape=21,size=3,position=position_dodge(0.2),alpha=1/2)+
+  ylab("Normalised Coverage")+
+  xlab("")+
+  theme(axis.text.x = element_text(angle=45,vjust=1,hjust=1))
+```
+

@@ -1,0 +1,70 @@
+---
+title: "DiscoverY Plotting"
+author: "R. Axel W. Wiberg"
+date: "24.01.2022" # Last updated
+output: html_notebook
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+library(here)
+library(ggplot2)
+```
+
+
+# 1. Load data
+```{r}
+discovery_dat<-read.table(here::here("DiscoverY","DiscoverY_output.tab"),header=FALSE)
+colnames(discovery_dat)<-c("scaf","len","prop_fem","cov_male")
+head(discovery_dat)
+```
+
+#2. Filtering/converting
+```{r}
+head(discovery_dat)
+nrow(discovery_dat)
+nrow(discovery_dat[which(discovery_dat$len > 100000),])
+discovery_dat<-discovery_dat[which(discovery_dat$len > 100000),]
+```
+
+
+#3. Plotting
+```{r}
+discovery_dat[which(discovery_dat$scaf=="utg000006l_1"),]
+discovery_dat[which(discovery_dat$cov_male>1000),]
+
+ggplot()+
+  geom_point(data=discovery_dat,aes(x=1-prop_fem,y=cov_male))+
+  xlab("Proportion Shared w/ Female")+
+  ylab("Male Coverage")
+
+nrow(discovery_dat[which(discovery_dat$cov_male>=120),])
+ggplot()+
+  geom_point(data=discovery_dat[which(discovery_dat$cov_male<120),],
+             aes(x=1-prop_fem,y=cov_male))+
+  scale_x_continuous("Proportion Shared w/ Female",limits=c(0,1))+
+  ylab("Male Coverage")
+
+discovery_dat[which((1-discovery_dat$prop_fem)<0.25),]
+y_cand<-as.character(discovery_dat$scaf[which(discovery_dat$cov_male<120 & (1-discovery_dat$prop_fem)<0.25)])
+
+phil<-c("utg000322l_1","utg000312c_1","utg000610l_1", "utg000584l_1", "utg001235l_1")
+discovery_dat[which(discovery_dat$scaf %in% phil),]
+
+discovery_dat_lowcov<-discovery_dat[which(discovery_dat$cov_male<500),]
+nrow(discovery_dat)-nrow(discovery_dat_lowcov)
+ggplot()+
+  geom_point(data=discovery_dat_lowcov[which(!(discovery_dat_lowcov$scaf %in% c(y_cand,phil))),],
+             aes(x=1-prop_fem,y=cov_male))+
+  geom_point(data=discovery_dat_lowcov[which((discovery_dat_lowcov$scaf %in% c(y_cand))),],
+             aes(x=1-prop_fem,y=cov_male),colour="red",size=3)+
+  geom_point(data=discovery_dat_lowcov[which((discovery_dat_lowcov$scaf %in% c(phil))),],
+             aes(x=1-prop_fem,y=cov_male),colour="blue",size=3)+
+  scale_x_continuous("Proportion Shared w/ Female",limits=c(0,1))+
+  ylab("Male Coverage")
+
+
+
+```
+
