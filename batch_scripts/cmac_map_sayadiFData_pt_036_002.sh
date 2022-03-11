@@ -84,7 +84,7 @@ ls -lh ${SNIC_TMP}/
 # Map reads
 echo "Mapping"
 echo ""
-bwa mem -t 20 ${SNIC_TMP}/pt_036_001_hifiasm_20201223.primary.fasta ${SNIC_TMP}/CmacF2_R1.fq ${SNIC_TMP}/CmacF2_R2.fq | samtools sort -@ 20 - | samtools view -@ 20 - -b > ${SNIC_TMP}/CmacF2.bam
+bwa mem -t 20 ${SNIC_TMP}/pt_036_002.hifiasm20210112.primary.fasta ${SNIC_TMP}/CmacF2_R1.fq ${SNIC_TMP}/CmacF2_R2.fq | samtools sort -@ 20 - | samtools view -@ 20 - -b > ${SNIC_TMP}/CmacF2.bam
 samtools index ${SNIC_TMP}/CmacF2_pt_036_002.bam
 samtools idxstats ${SNIC_TMP}/CmacF2_pt_036_002.bam > ${SNIC_TMP}/CmacF2_pt_036_002.idxstats
 samtools flagstat ${SNIC_TMP}/CmacF2_pt_036_002.bam > ${SNIC_TMP}/CmacF2_pt_036_002.flagstats
