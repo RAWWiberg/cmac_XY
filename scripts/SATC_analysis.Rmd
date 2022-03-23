@@ -17,10 +17,11 @@ library(ggplot2)
 
 Load indxstats files
 ```{r}
-files<-list.files(here::here("SATC/filt_readsreps"),pattern = ".idxstats")
-idx<-lapply(paste(here::here(),"/SATC/filt_readsreps/",files,sep=""), read.table,as.is=TRUE)
+files<-list.files(here::here("SATC/pt_036_002/filt_raw"),pattern = ".idxstats")
+idx<-lapply(paste(here::here(),"/SATC/pt_036_002/filt_raw/",files,sep=""), read.table,as.is=TRUE)
 names(idx)<-gsub(".idxstats","",files)
 names(idx)<-gsub("_filtrepsreads","",names(idx))
+names(idx)<-gsub("_pt_036_002","",names(idx))
 
 cov_mat<-sapply(idx,function(x) x$V3)
 rownames(cov_mat)<-idx$CmacF1$V1
@@ -43,9 +44,11 @@ ggplot()+
 
 List of Philipp's candidate Y scaffolds
 ```{r}
+# pt_036_001
 philY<-c("utg000322l_1","utg000312c_1","utg000610l_1", "utg000584l_1", "utg001235l_1")
 philX<-c("utg000057l_1", "utg000359l_1","utg000114l_1", "utg000326l_1", "utg000139l_1",
          "utg000191l_1", "utg000532l_1")
+# pt_036_002
 ```
 
 
@@ -180,7 +183,7 @@ sex$SexScaffolds[match(c(philY), sex$SexScaffolds$Name),]
 sex$SexScaffolds[match(c(philX), sex$SexScaffolds$Name),]
 
 sig_scafs<-sex$SexScaffolds[which(sex$SexScaffolds$Pval<0.05),]
-
+sig_scafs
 
 length(which(sex$SexScaffolds$Name[which(sex$SexScaffolds$Pval<0.05)] %in% c(philX,philY)))
 nrow(sex$SexScaffolds[which(sex$SexScaffolds$Pval<0.05),])
@@ -219,7 +222,8 @@ sig_dif_scafs$type<-rep("Unnkown",nrow(sig_dif_scafs))
 sig_dif_scafs$type[match(c(philX), sig_dif_scafs$Name)]<-"X"
 sig_dif_scafs$type[match(c(philY), sig_dif_scafs$Name)]<-"Y"
 
-sig_dif_scafs_dat<-mat[unique(c(philX,philY,sig_diff_scafs)),]
+#philX,philY
+sig_dif_scafs_dat<-mat[unique(c(sig_diff_scafs)),]
 sig_dif_scafs_dat<-t(sig_dif_scafs_dat)
 sig_dif_scafs_dat<-as.data.frame(sig_dif_scafs_dat)
 sig_dif_scafs_dat$samp<-row.names(sig_dif_scafs_dat)
@@ -242,7 +246,7 @@ beta0.1<-sex$SexScaffolds$Name[which(abs(sex$SexScaffolds$betaval)>0.1)]
 # If beta is negative, then homomorphic coverage is lower than heteromorphic
 putativeY<-sex$SexScaffolds$Name[which(sex$SexScaffolds$betaval<0)]
 putativeY<-putativeY[which(putativeY%in%as.character(sig_dif_scafs_dat$contig))]
-# If beta is negative, then homomorphic coverage is lower than heteromorphic
+# If beta is positive, then homomorphic coverage is higher than heteromorphic
 putativeX<-sex$SexScaffolds$Name[which(sex$SexScaffolds$betaval>0)]
 putativeX<-putativeX[which(putativeX%in%as.character(sig_dif_scafs_dat$contig))]
 sig_dif_scafs_dat$contig<-factor(sig_dif_scafs_dat$contig,levels=c(putativeX,putativeY))
